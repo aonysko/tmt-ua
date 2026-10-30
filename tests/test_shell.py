@@ -2,12 +2,15 @@
 
 Run from the app/ folder in an environment with Playwright installed
 (in the research repo: ../.venv/bin/python -m unittest discover -s tests -v).
-Needs internet access: jsPsych is loaded from the CDN.
+Needs internet access: jsPsych is loaded from the CDN. To check the published
+site instead of the local files, set TMTUA_BASE_URL, e.g.
+TMTUA_BASE_URL=https://aonysko.github.io/tmt-ua/
 """
 
 import functools
 import http.server
 import json
+import os
 import threading
 import unittest
 from pathlib import Path
@@ -25,10 +28,13 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
 class AppShellTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        handler = functools.partial(QuietHandler, directory=APP_DIR)
-        cls.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
-        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
-        cls.base = f"http://127.0.0.1:{cls.server.server_port}/"
+        cls.server = None
+        cls.base = os.environ.get("TMTUA_BASE_URL")
+        if not cls.base:
+            handler = functools.partial(QuietHandler, directory=APP_DIR)
+            cls.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+            threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+            cls.base = f"http://127.0.0.1:{cls.server.server_port}/"
         cls.pw = sync_playwright().start()
         cls.browsers = [cls.pw.chromium.launch(), cls.pw.webkit.launch()]
 
@@ -37,7 +43,8 @@ class AppShellTest(unittest.TestCase):
         for browser in cls.browsers:
             browser.close()
         cls.pw.stop()
-        cls.server.shutdown()
+        if cls.server:
+            cls.server.shutdown()
 
     def open(self, browser, query, block_cdn=False, tamper_cdn=False):
         """Opens the app; returns the page and a list collecting JS errors."""
