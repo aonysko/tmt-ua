@@ -21,6 +21,8 @@ import certifi
 
 CONFIG = (Path(__file__).resolve().parent.parent / "src" / "config.js").read_text()
 URL = re.search(r"RECEIVER_URL =\s*'([^']+)'", CONFIG).group(1)
+CODE_GS = (Path(__file__).resolve().parent.parent / "receiver" / "Code.gs").read_text()
+EXPECTED_VERSION = re.search(r"RECEIVER_VERSION = '([^']+)'", CODE_GS).group(1)
 RUN = time.strftime("%m%d%H%M%S")
 # python.org builds on macOS do not use the system certificates.
 TLS = ssl.create_default_context(cafile=certifi.where())
@@ -53,6 +55,13 @@ def check(name, reply, ok=True):
 
 
 def main():
+    with urllib.request.urlopen(URL, timeout=60, context=TLS) as response:
+        deployed = json.loads(response.read()).get("receiver_version")
+    if deployed != EXPECTED_VERSION:
+        print(f"FAIL deployed receiver is {deployed}, Code.gs is {EXPECTED_VERSION}: "
+              "paste Code.gs and deploy a new version (receiver/README.md)")
+        sys.exit(1)
+    print(f"ok   deployed receiver version {deployed}")
     results = []
     tmt_a = message(
         1,
@@ -99,6 +108,11 @@ def main():
     results.append(check("numeric-looking id", post(numeric)[0]))
     results.append(check("numeric-looking id again", post(dict(numeric, block="tmt_b"))[0]))
 
+    # Out of order: seq 2 arrives before seq 1, as beacons may on page close.
+    results.append(check("seq 2 first", post(message(7, "tmt_b", seq=2))[0]))
+    results.append(check("seq 1 later", post(message(7, "tmt_a", seq=1))[0]))
+    results.append(check("bad seq", post(message(7, "tmt_a", seq=0))[0], ok=False))
+
     print(f"""
 Run {RUN}. Expected in the pilot storage:
 - sessions: one row chk{RUN}s1 with tmt_a and tmt_b columns, last_block tmt_b,
@@ -107,6 +121,7 @@ Run {RUN}. Expected in the pilot storage:
 - rows chk{RUN}s10..s14 with n = 10..14
 - row chk{RUN}s3 without any email; rows chk{RUN}s5 and CHK{RUN}S5 separately;
   one row {RUN}E5 (text, not a number) with last_block tmt_b
+- row chk{RUN}s7 with last_block tmt_b and last_seq 2 (the later seq 1 did not move it back)
 - no rows for chk{RUN}s2
 - contacts: one row chk{RUN}p3 with the email, invite_from = created_on + 7 days,
   a checkbox in "invited", retest_done_at filled; no row for chk{RUN}p4

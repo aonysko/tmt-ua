@@ -75,3 +75,8 @@ body {
   font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace;
   text-decoration: none;
 }
+
+.dev-badge-alert {
+  border-color: #c00;
+  background: #ffe0e0;
+}

@@ -3,6 +3,7 @@
 // receiver/README.md. The app POSTs one message per finished block:
 //
 //   { session_id, participant_code, mode, app_version, block,
+//     seq?: message number within the session (1, 2, ...),
 //     summary?: { column: number | string | boolean | null, ... },
 //     log?: any JSON,            -> <logs folder>/<session_id>/<block>.json
 //     contact?: { email?, letter?, retest_done_at? } }
@@ -11,9 +12,12 @@
 // become new columns. contact goes only into the separate contacts
 // spreadsheet (decisions 37, 52). main writes to the main storage; pilot and
 // dev write to the pilot copies (decision 53). Writing the same message twice
-// changes nothing, so the app may safely retry.
+// changes nothing, so the app may safely retry. Messages may arrive out of
+// order (beacons sent on page close travel in parallel), so last_block only
+// moves forward: a message with a lower seq than one already received does
+// not change it.
 
-const RECEIVER_VERSION = '1.0.0';
+const RECEIVER_VERSION = '1.1.0';
 
 const STORE_FOR_MODE = { main: 'main', pilot: 'pilot', dev: 'pilot' };
 
@@ -30,6 +34,7 @@ const SESSION_COLUMNS = [
   'received_first_at',
   'received_last_at',
   'last_block',
+  'last_seq',
   'log_folder',
 ];
 const CONTACT_COLUMNS = [
@@ -48,6 +53,7 @@ const PAYLOAD_FIELDS = [
   'mode',
   'app_version',
   'block',
+  'seq',
   'summary',
   'log',
   'contact',
@@ -130,6 +136,7 @@ function validatePayload(p) {
   if (!Object.prototype.hasOwnProperty.call(STORE_FOR_MODE, p.mode)) return 'mode';
   if (!matches(p.app_version, VERSION_RE)) return 'app_version';
   if (!matches(p.block, BLOCK_RE)) return 'block';
+  if (p.seq !== undefined && !(Number.isInteger(p.seq) && p.seq >= 1 && p.seq <= 100000)) return 'seq';
 
   if (p.summary !== undefined) {
     if (!isPlainObject(p.summary)) return 'summary';
@@ -210,7 +217,6 @@ function writeSession(store, p) {
     mode: p.mode,
     app_version: p.app_version,
     received_last_at: now,
-    last_block: p.block,
   });
   if (p.log !== undefined) {
     const folder = childFolder(store.logs, p.session_id);
@@ -223,7 +229,18 @@ function writeSession(store, p) {
     row = nextRow(sheet);
     values.received_first_at = now;
   }
+  if (isNewer(sheet, row, p.seq)) {
+    values.last_block = p.block;
+    if (p.seq !== undefined) values.last_seq = p.seq;
+  }
   writeValues(sheet, row, values);
+}
+
+// True unless this session already has a message with a higher or equal seq.
+function isNewer(sheet, row, seq) {
+  if (seq === undefined) return true;
+  const column = ensureColumns(sheet, ['last_seq']).last_seq;
+  return !(Number(sheet.getRange(row, column).getValue()) >= seq);
 }
 
 function writeContact(sheet, p) {

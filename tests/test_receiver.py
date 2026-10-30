@@ -57,6 +57,8 @@ class ReceiverValidationTest(unittest.TestCase):
             payload(log=[1, 2, 3]),
             payload(block="retest_invite", contact={"email": "a.b@example.com", "letter": "Текст листа"}),
             payload(contact={"retest_done_at": "2026-11-20T10:00:00Z"}),
+            payload(seq=1),
+            payload(seq=100000),
         ]:
             with self.subTest(p=p):
                 self.assertIsNone(self.problem(p))
@@ -74,11 +76,18 @@ class ReceiverValidationTest(unittest.TestCase):
             (payload(mode=...), "mode"),
             (payload(app_version="1.0 beta"), "app_version"),
             (payload(block="TMT-A"), "block"),
+            (payload(seq=0), "seq"),
+            (payload(seq=-1), "seq"),
+            (payload(seq=1.5), "seq"),
+            (payload(seq="2"), "seq"),
+            (payload(seq=100001), "seq"),
+            (payload(seq=None), "seq"),
             (payload(summary=[1]), "summary"),
             (payload(summary={"Bad Key": 1}), "summary key Bad Key"),
             (payload(summary={"email": "a@b.co"}), "summary key email"),
             (payload(summary={"session_id": "x"}), "summary key session_id"),
             (payload(summary={"log_folder": "x"}), "summary key log_folder"),
+            (payload(summary={"last_seq": 9}), "summary key last_seq"),
             (payload(summary={"nested": {"a": 1}}), "summary value nested"),
             (payload(summary={"list": [1]}), "summary value list"),
             (payload(summary={"long": "x" * 5001}), "summary value long"),

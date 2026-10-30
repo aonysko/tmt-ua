@@ -1,12 +1,16 @@
-import { APP_VERSION } from './config.js';
+import { APP_VERSION, RECEIVER_URL } from './config.js';
 import { texts } from './texts.uk.js';
 import { parseUrl, buildParams, selectBlocks } from './session.js';
 import { BLOCKS } from './blocks.js';
 import { initJsPsych, libsLoaded } from './lib.js';
-import { renderDevMenu, renderDevBadge, renderDevEnd } from './dev.js';
+import { renderDevMenu, createDevBadge, renderDevEnd } from './dev.js';
+import { newSessionId, newParticipantCode } from './data/ids.js';
+import { deviceInfo } from './data/device.js';
+import { createSender } from './data/sender.js';
 
 // Entry point: reads the URL, then either shows the dev menu or runs the
-// session blocks in their fixed order.
+// session blocks in their fixed order, sending each block's data when the
+// block ends.
 
 function showMessage(text) {
   const message = document.createElement('p');
@@ -36,21 +40,47 @@ function start() {
     return showMessage(error.message);
   }
 
+  const badge = isDev ? createDevBadge(session) : null;
+  const ids = { session_id: newSessionId(), participant_code: newParticipantCode() };
+  let atEnd = false;
+  const sender = createSender({
+    url: RECEIVER_URL,
+    base: { ...ids, mode: session.mode, app_version: APP_VERSION },
+    meta: { session_type: 'first', started_at: new Date().toISOString(), ...deviceInfo() },
+    ...params.send,
+    onChange: (state) => {
+      badge?.update(state);
+      if (atEnd && !isDev && state.pending === 0) showMessage(texts.common.sessionEnd);
+    },
+  });
+
   const jsPsych = initJsPsych({
     display_element: 'jspsych-target',
-    on_finish: () =>
-      isDev ? renderDevEnd(jsPsych, session) : showMessage(texts.common.sessionEnd),
+    on_finish: () => {
+      if (isDev) return renderDevEnd(jsPsych, session, badge);
+      // The participant may close the tab right after the last screen, so
+      // the thank-you text appears only once everything is delivered.
+      atEnd = true;
+      if (sender.pending() === 0) return showMessage(texts.common.sessionEnd);
+      showMessage(texts.data.sending);
+      sender.flush().then((done) => done || showMessage(texts.data.offline));
+    },
   });
-  jsPsych.data.addProperties({ app_version: APP_VERSION, mode: session.mode });
+  jsPsych.data.addProperties({ app_version: APP_VERSION, mode: session.mode, session_id: ids.session_id });
 
   if (isDev) {
-    renderDevBadge(session);
+    document.body.append(badge.element);
     // Handle for debugging in the browser console and for automated checks.
-    window.tmtua = { jsPsych, params, session };
+    window.tmtua = { jsPsych, params, session, sender, ids };
   }
 
-  const ctx = { jsPsych, params, session };
-  jsPsych.run(blocks.flatMap((b) => b.build(b, ctx)));
+  const ctx = { jsPsych, params, session, sender };
+  jsPsych.run(
+    blocks.map((b) => ({
+      timeline: b.build(b, ctx),
+      on_timeline_finish: () => sender.send(b.id, b.message(b, ctx)),
+    })),
+  );
 }
 
 start();

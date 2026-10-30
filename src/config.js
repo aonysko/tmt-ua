@@ -42,4 +42,11 @@ export const PARAMS = {
     digitMs: 250, // Robertson et al., 1997
     maskMs: 900, // Robertson et al., 1997
   },
+  // Technical, not research parameters: how data delivery waits and retries
+  // (data/sender.js). The receiver's first reply after a pause takes ~7 s.
+  send: {
+    timeoutMs: 30_000,
+    retryBaseMs: 2000,
+    retryMaxMs: 30_000,
+  },
 };

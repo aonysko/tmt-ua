@@ -1,11 +1,19 @@
-import { placeholder } from './tasks/placeholder.js';
+import { placeholder, placeholderMessage } from './tasks/placeholder.js';
 
 // Blocks of a first session in their fixed order (decision 33;
 // docs/11-technical-plan.md, section 2). build(block, ctx) returns the block's
-// part of the jsPsych timeline; ctx is { jsPsych, params, session }.
-// label is shown in the dev menu, task names the task that builds the block.
+// part of the jsPsych timeline; message(block, ctx) runs when the block ends
+// and returns what to send to the receiver ({ summary, log, contact }) or
+// null. ctx is { jsPsych, params, session, sender }. label is shown in the
+// dev menu, task names the task that builds the block.
 
-const block = (id, label, task, build = placeholder) => ({ id, label, task, build });
+const block = (id, label, task, build = placeholder, message = placeholderMessage) => ({
+  id,
+  label,
+  task,
+  build,
+  message,
+});
 
 export const BLOCKS = [
   block('device_check', 'Перевірка пристрою', 'Т0.5'),

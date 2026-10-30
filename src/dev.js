@@ -2,8 +2,8 @@ import { APP_VERSION } from './config.js';
 import { isPlaceholder } from './blocks.js';
 
 // Dev-mode screens (?mode=dev): a menu to jump to any block, a corner badge
-// that leads back to it, and a dump of the collected data at the end.
-// Nothing here runs in main or pilot mode.
+// with the delivery queue that leads back to the menu, and a dump of the
+// collected data at the end. Nothing here runs in main or pilot mode.
 
 // Builds a dev link that keeps the current set.* overrides.
 function devUrl(session, extra = {}) {
@@ -33,15 +33,21 @@ export function renderDevMenu(blocks, session) {
     </main>`;
 }
 
-export function renderDevBadge(session) {
+// Returns the badge element and update({ pending, rejected }) for the queue.
+export function createDevBadge(session) {
   const badge = document.createElement('a');
   badge.className = 'dev-badge';
   badge.href = devUrl(session);
-  badge.textContent = `dev ${APP_VERSION} · меню`;
-  document.body.append(badge);
+  const update = ({ pending, rejected }) => {
+    badge.textContent = `dev ${APP_VERSION} · у черзі ${pending}`;
+    if (rejected) badge.textContent += ` · відхилено ${rejected}`;
+    badge.classList.toggle('dev-badge-alert', rejected > 0);
+  };
+  update({ pending: 0, rejected: 0 });
+  return { element: badge, update };
 }
 
-export function renderDevEnd(jsPsych, session) {
+export function renderDevEnd(jsPsych, session, badge) {
   document.body.innerHTML = `
     <main class="dev-end">
       <h1>Кінець dev-сесії</h1>
@@ -53,4 +59,5 @@ export function renderDevEnd(jsPsych, session) {
     null,
     2,
   );
+  document.body.append(badge.element);
 }

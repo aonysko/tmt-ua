@@ -7,69 +7,15 @@ site instead of the local files, set TMTUA_BASE_URL, e.g.
 TMTUA_BASE_URL=https://aonysko.github.io/tmt-ua/
 """
 
-import functools
-import http.server
 import json
-import os
-import threading
 import unittest
-from pathlib import Path
 
-from playwright.sync_api import expect, sync_playwright
+from playwright.sync_api import expect
 
-APP_DIR = Path(__file__).resolve().parent.parent
-
-
-class QuietHandler(http.server.SimpleHTTPRequestHandler):
-    def log_message(self, *args):
-        pass
+from harness import AppTestCase
 
 
-class AppShellTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.server = None
-        cls.base = os.environ.get("TMTUA_BASE_URL")
-        if not cls.base:
-            handler = functools.partial(QuietHandler, directory=APP_DIR)
-            cls.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
-            threading.Thread(target=cls.server.serve_forever, daemon=True).start()
-            cls.base = f"http://127.0.0.1:{cls.server.server_port}/"
-        cls.pw = sync_playwright().start()
-        cls.browsers = [cls.pw.chromium.launch(), cls.pw.webkit.launch()]
-
-    @classmethod
-    def tearDownClass(cls):
-        for browser in cls.browsers:
-            browser.close()
-        cls.pw.stop()
-        if cls.server:
-            cls.server.shutdown()
-
-    def open(self, browser, query, block_cdn=False, tamper_cdn=False):
-        """Opens the app; returns the page and a list collecting JS errors."""
-        page = browser.new_page()
-        self.addCleanup(page.close)
-        errors = []
-        page.on("pageerror", lambda exc: errors.append(str(exc)))
-        page.on("console", lambda msg: msg.type == "error" and errors.append(msg.text))
-        if block_cdn:
-            page.route("**/cdn.jsdelivr.net/**", lambda route: route.abort())
-        if tamper_cdn:
-            def tamper(route):
-                response = route.fetch()
-                route.fulfill(response=response, body=response.text() + "\n;")
-            page.route("**/jspsych@*/dist/*.js", tamper)
-        page.goto(self.base + query)
-        return page, errors
-
-    def module(self, page, path):
-        """Imports one of the app's own modules inside the page."""
-        return page.evaluate(f"import('./src/{path}').then(m => JSON.parse(JSON.stringify(m)))")
-
-    def blocks(self, page):
-        return page.evaluate("import('./src/blocks.js').then(m => m.BLOCKS.map(b => [b.id, b.label]))")
-
+class AppShellTest(AppTestCase):
     def test_main_mode_runs_all_blocks_in_order(self):
         for browser in self.browsers:
             with self.subTest(browser=browser.browser_type.name):
