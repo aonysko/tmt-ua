@@ -1,0 +1,77 @@
+/* Base layout. Task screens add their own styles; stimulus sizes in mm come
+   from screen calibration (decision 60), not from this file. */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #fff;
+  color: #111;
+}
+
+#jspsych-target {
+  height: 100%;
+}
+
+.message {
+  max-width: 40rem;
+  margin: 20vh auto 0;
+  padding: 0 16px;
+  font: 1.25rem/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  text-align: center;
+}
+
+/* Dev mode only */
+
+.dev-menu,
+.dev-end {
+  max-width: 48rem;
+  margin: 2rem auto;
+  padding: 0 16px;
+  font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+.dev-menu h1,
+.dev-end h1 {
+  font-size: 1.25rem;
+}
+
+.dev-menu table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.dev-menu td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #ddd;
+}
+
+.dev-hint {
+  color: #555;
+  font-size: 13px;
+}
+
+.dev-end pre {
+  max-height: 70vh;
+  overflow: auto;
+  padding: 8px;
+  background: #f4f4f4;
+  font-size: 12px;
+}
+
+.dev-badge {
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  z-index: 1000;
+  padding: 2px 6px;
+  border: 1px solid #d4b400;
+  border-radius: 4px;
+  background: #fff8d6;
+  color: #333;
+  font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace;
+  text-decoration: none;
+}

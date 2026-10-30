@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Онлайн-дослідження</title>
+    <link rel="icon" href="data:," />
+
+    <!-- Exact versions with integrity hashes: every participant gets the same
+         library code, and a changed file on the CDN is refused, not run. -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/jspsych@8.3.0/css/jspsych.css"
+      integrity="sha384-+gGUkbtw2BJWSroKW2jzIEXGe7KxdycJ0Bo+CqzpIOSBHOYEHHRWETaV+v2mpdWX"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="src/style.css" />
+    <script
+      src="https://cdn.jsdelivr.net/npm/jspsych@8.3.0/dist/index.browser.min.js"
+      integrity="sha384-PPMNzYQfqrWFhrOxhpwxXmKK+LDH//fBCLsvA/JIRHOfiuOcZ2j8wJhqo87V4R4B"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@jspsych/plugin-html-button-response@2.1.0/dist/index.browser.min.js"
+      integrity="sha384-tPGtXEC8xEbInWvarnxvJ3fyzeXwRDS0QjGUts+TGQ9I8OCxiqsv9lxTS3mEN6um"
+      crossorigin="anonymous"
+    ></script>
+    <script type="module" src="src/main.js"></script>
+  </head>
+  <body>
+    <div id="jspsych-target"></div>
+    <noscript><p class="message">Щоб пройти дослідження, увімкніть JavaScript у браузері.</p></noscript>
+  </body>
+</html>
